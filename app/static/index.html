@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>AI DevOps Content Engine</title>
+  <style>
+    :root{font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#182230;background:#f4f7fb;font-synthesis:none}
+    *{box-sizing:border-box}body{margin:0}header{background:#102b46;color:white;padding:28px max(24px,calc((100% - 1100px)/2))}
+    header h1{font-size:24px;margin:0 0 5px}header p{margin:0;color:#c6d6e6}.wrap{max-width:1100px;margin:28px auto;padding:0 20px}
+    .panel,.card{background:white;border:1px solid #dfe7ef;border-radius:12px;box-shadow:0 3px 12px #18324a0a}
+    .panel{padding:22px;margin-bottom:24px}.panel h2{margin:0 0 16px;font-size:18px}.form{display:grid;grid-template-columns:2fr 1.3fr 1fr auto;gap:12px;align-items:end}
+    label{display:block;font-size:12px;font-weight:650;color:#566779;margin-bottom:6px}input{width:100%;padding:11px;border:1px solid #cbd6e1;border-radius:7px;font:inherit}
+    button{border:0;border-radius:7px;background:#1769aa;color:white;padding:11px 16px;font:inherit;font-weight:650;cursor:pointer}button.secondary{background:#eaf1f7;color:#23435f}button:hover{filter:brightness(.95)}
+    .rowhead{display:flex;justify-content:space-between;align-items:center;margin:4px 0 14px}.rowhead h2{margin:0;font-size:19px}.filters{display:flex;gap:7px}.filters button{padding:7px 11px;font-size:12px}
+    .cards{display:grid;gap:14px}.card{padding:18px}.top{display:flex;justify-content:space-between;gap:16px;align-items:flex-start}.top h3{margin:0 0 4px;font-size:17px}.muted{font-size:12px;color:#708094}.badge{font-size:11px;font-weight:750;padding:5px 9px;border-radius:99px;background:#e9eef3;color:#536477;white-space:nowrap}.badge.APPROVED{background:#e4f5eb;color:#237547}.badge.PUBLISHED{background:#e5efff;color:#245aaa}
+    .contentgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:16px}.block{background:#f7f9fb;border-radius:8px;padding:12px;min-width:0}.block h4{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#65778a;margin:0 0 8px}.block p{font-size:13px;line-height:1.55;white-space:pre-wrap;margin:0;overflow-wrap:anywhere}.block ul{margin:0;padding-left:18px;font-size:13px;line-height:1.55}.wide{grid-column:1/-1}.actions{display:flex;gap:8px;margin-top:13px}.actions button{font-size:12px;padding:8px 12px}.empty,.message{color:#6b7b8e;text-align:center;padding:26px}.message.error{color:#a52e2e}.toast{margin-bottom:14px;color:#a52e2e;font-size:13px}
+    @media(max-width:780px){.form{grid-template-columns:1fr 1fr}.form button{width:100%}}@media(max-width:560px){.form,.contentgrid{grid-template-columns:1fr}.wide{grid-column:auto}.filters{flex-wrap:wrap}.top{align-items:flex-start}}
+  </style>
+</head>
+<body>
+  <header><h1>AI DevOps Content Engine</h1><p>Turn one technical idea into a reviewable content pack.</p></header>
+  <main class="wrap">
+    <section class="panel"><h2>Generate a content pack</h2>
+      <form id="generator" class="form">
+        <div><label for="topic">Topic</label><input id="topic" required minlength="3" maxlength="500" value="AI agents in CI/CD pipelines" placeholder="e.g. Kubernetes cost optimization"></div>
+        <div><label for="audience">Audience</label><input id="audience" value="DevOps engineers and cloud architects"></div>
+        <div><label for="tone">Tone</label><input id="tone" value="practical"></div>
+        <button id="generate" type="submit">Generate draft</button>
+      </form>
+    </section>
+    <div class="rowhead"><h2>Content queue <span id="count" class="muted"></span></h2><div class="filters" id="filters"></div></div>
+    <div id="notice" class="toast" hidden></div><section id="queue" class="cards"><div class="empty">Loading your queue…</div></section>
+  </main>
+  <script>
+    const queue=document.querySelector('#queue'), notice=document.querySelector('#notice');let allItems=[],filter='ALL';
+    const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    async function api(url,options={}){const r=await fetch(url,{...options,headers:{'Content-Type':'application/json',...(options.headers||{})}});const data=await r.json();if(!r.ok)throw new Error(data.detail||'Request failed');return data}
+    function render(){const visible=filter==='ALL'?allItems:allItems.filter(x=>x.status===filter);document.querySelector('#count').textContent=`(${visible.length})`;
+      const filters=['ALL','DRAFT','APPROVED','PUBLISHED'];document.querySelector('#filters').innerHTML=filters.map(s=>`<button class="secondary" data-filter="${s}">${s==='ALL'?'All':s[0]+s.slice(1).toLowerCase()}</button>`).join('');
+      document.querySelectorAll('[data-filter]').forEach(b=>b.onclick=()=>{filter=b.dataset.filter;render()});
+      if(!visible.length){queue.innerHTML=`<div class="empty">${filter==='ALL'?'No content yet. Generate a draft above.':`No ${filter.toLowerCase()} items.`}</div>`;return}
+      queue.innerHTML=visible.map(x=>`<article class="card"><div class="top"><div><h3>${esc(x.topic)}</h3><div class="muted">Created ${new Date(x.created_at).toLocaleString()} · ${esc(x.audience)}</div></div><span class="badge ${x.status}">${x.status}</span></div>
+      <div class="contentgrid"><div class="block"><h4>LinkedIn post</h4><p>${esc(x.linkedin_post)}</p></div><div class="block"><h4>Instagram caption</h4><p>${esc(x.instagram_caption)}</p></div>
+      <div class="block"><h4>Reel script</h4><p>${esc(x.reel_script)}</p></div><div class="block"><h4>Storyboard</h4><ul>${x.storyboard.map(s=>`<li>${esc(s.visual)} — ${esc(s.on_screen_text)} (${esc(s.duration_seconds)}s)</li>`).join('')}</ul></div>
+      <div class="block"><h4>Hashtags</h4><p>${esc(x.hashtags.join(' '))}</p></div><div class="block"><h4>Call to action</h4><p>${esc(x.cta)}</p></div></div>
+      <div class="actions">${x.status!=='DRAFT'?`<button class="secondary" data-status="DRAFT" data-id="${x.id}">Move to draft</button>`:''}${x.status!=='APPROVED'?`<button data-status="APPROVED" data-id="${x.id}">Approve</button>`:''}${x.status!=='PUBLISHED'?`<button class="secondary" data-status="PUBLISHED" data-id="${x.id}">Mark published</button>`:''}</div></article>`).join('');
+      document.querySelectorAll('[data-status]').forEach(b=>b.onclick=async()=>{try{await api(`/api/content/${b.dataset.id}/status`,{method:'PATCH',body:JSON.stringify({status:b.dataset.status})});await load()}catch(e){showError(e.message)}})}
+    async function load(){allItems=await api('/api/content');render()}
+    function showError(message){notice.textContent=message;notice.hidden=false;setTimeout(()=>notice.hidden=true,7000)}
+    document.querySelector('#generator').onsubmit=async e=>{e.preventDefault();const button=document.querySelector('#generate');button.disabled=true;button.textContent='Generating…';notice.hidden=true;
+      try{await api('/api/content',{method:'POST',body:JSON.stringify({topic:document.querySelector('#topic').value,audience:document.querySelector('#audience').value,tone:document.querySelector('#tone').value})});filter='ALL';await load()}
+      catch(err){showError(err.message)}finally{button.disabled=false;button.textContent='Generate draft'}};
+    load().catch(e=>{queue.innerHTML='<div class="message error">Could not load the local content queue.</div>';showError(e.message)});
+  </script>
+</body>
+</html>
